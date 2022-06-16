@@ -1,0 +1,28 @@
+version: '3.9'
+
+services:
+  mariadb:
+    container_name: miniwallet-mariadb
+    image: docker.io/bitnami/mariadb:10.6
+    restart: always
+    environment:
+      - MARIADB_USER=miniwallet
+      - MARIADB_PASSWORD=miniwallet
+      - MARIADB_ROOT_PASSWORD=miniwallet
+      - MARIADB_DATABASE=miniwallet
+  miniwalletapp:
+    image: docker.io/bitnami/laravel:9
+    restart: always
+    ports:
+      - '80:8000'
+    environment:
+      - DB_HOST=mariadb
+      - DB_PORT=3306
+      - DB_USERNAME=miniwallet
+      - DB_PASSWORD=miniwallet
+      - DB_DATABASE=miniwallet
+    volumes:
+      - './miniwallet:/app'
+    depends_on:
+      - mariadb
+  
