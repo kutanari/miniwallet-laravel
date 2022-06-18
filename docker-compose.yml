@@ -3,13 +3,18 @@ version: '3.9'
 services:
   mysql:
     container_name: miniwallet-mysql
-    image: mysql:8
-    restart: always
+    image: 'mysql:8.0'
+    ports:
+      - '3306:3306'
     environment:
-      - MYSQL_USER=miniwallet
-      - MYSQL_PASSWORD=miniwallet
-      - MYSQL_ROOT_PASSWORD=miniwallet
-      - MYSQL_DATABASE=miniwallet
+      MYSQL_ROOT_PASSWORD: 'miniwallet_password'
+      MYSQL_DATABASE: 'miniwallet'
+      MYSQL_ROOT_HOST: "%"
+      MYSQL_USER: 'miniwallet_user'
+      MYSQL_PASSWORD: 'miniwallet_password'
+      MYSQL_ALLOW_EMPTY_PASSWORD: 1
+    volumes:
+      - ./mysql/data:/var/lib/mysql
   miniwalletapp:
     container_name: miniwalletapp
     image: docker.io/bitnami/laravel:9
@@ -17,13 +22,12 @@ services:
     ports:
       - '80:8000'
     environment:
-      - DB_HOST=mysql
-      - DB_PORT=3306
-      - DB_USERNAME=miniwallet
-      - DB_PASSWORD=miniwallet
-      - DB_DATABASE=miniwallet
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USERNAME: 'miniwallet_user'
+      DB_PASSWORD: 'miniwallet_password'
+      DB_DATABASE: 'miniwallet'
     volumes:
       - './miniwallet:/app'
     depends_on:
       - mysql
-  
