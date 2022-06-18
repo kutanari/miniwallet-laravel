@@ -6,3 +6,6 @@ setup-verbose:
 
 destroy:
 	docker-compose down
+
+migrate:
+	docker-compose exec miniwalletapp php artisan migrate
