@@ -36,6 +36,7 @@ Route::prefix('v1')->group(function () {
     Route::middleware('auth.token')->group(function () {
         Route::controller(MiniwalletController::class)->group(function () {
             Route::post('/wallet', 'enableWallet');
+            Route::get('/wallet', 'getWallet');
         });
     });
 });

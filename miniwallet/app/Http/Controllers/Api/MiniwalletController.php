@@ -113,4 +113,23 @@ class MiniwalletController extends Controller
         }
         return response()->json($response);
     }
+
+    public function getWallet(Request $request)
+    {
+        $account = $request->get('account');
+        $wallet = Wallet::where('owned_by', $account->customer_xid)->first();
+        $response = [
+            'status' => 'success',
+            'data' => [
+                'wallet' => [
+                    'id' => $wallet->id,
+                    'owned_by' => $wallet->owned_by,
+                    'status' => $wallet->status,
+                    'enabled_at' => $wallet->enabled_at,
+                    'balance' => 0, //TODO:: get balance from transaction
+                ]
+            ]
+        ];
+        return response()->json($response);
+    }
 }
