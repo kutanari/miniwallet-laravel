@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Account;
+use App\Models\Wallet;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -45,15 +46,26 @@ class MiniwalletController extends Controller
         $account = new Account;
         $account->customer_xid = $customer_xid;
         $account->token = $token;
-        $isSaved = $account->save();
 
-        if ($isSaved) {
-            $response = [
-                'status' => 'success',
-                'data' => [
-                    'token' => $token
-                ]
-            ];
+        if ($account->save()) {
+            $wallet = new Wallet;
+            $wallet->id = Str::uuid();
+            $wallet->owned_by = $customer_xid;
+
+            if ($wallet->save()) {
+                $response = [
+                    'status' => 'success',
+                    'data' => [
+                        'token' => $token
+                    ]
+                ];
+            } else {
+                $response = [
+                    'status' => 'fail',
+                    'message' => 'Failed to create wallet'
+                ];
+            }
+
             return response()->json($response);
         } else {
             $response = [
