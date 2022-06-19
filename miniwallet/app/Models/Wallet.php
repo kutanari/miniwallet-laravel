@@ -14,4 +14,10 @@ class Wallet extends Model
 
     public $incrementing = false;
     protected $keyType = 'string';
+
+    public function getLatestAmount(): int
+    {
+        $latest_transaction = Transaction::where('wallet_id', $this->id)->orderBy('created_at', 'desc')->first();
+        return (int)$latest_transaction->amount_to ?? 0;
+    }
 }

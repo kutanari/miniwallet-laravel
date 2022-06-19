@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Account;
+use App\Models\Transaction;
 use App\Models\Wallet;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -101,7 +102,7 @@ class MiniwalletController extends Controller
                         'owned_by' => $wallet->owned_by,
                         'status' => $wallet->status,
                         'enabled_at' => $wallet->enabled_at,
-                        'balance' => 0, //TODO:: get balance from transaction
+                        'balance' => $wallet->getLatestAmount(),
                     ]
                 ]
             ];
@@ -126,7 +127,7 @@ class MiniwalletController extends Controller
                     'owned_by' => $wallet->owned_by,
                     'status' => $wallet->status,
                     'enabled_at' => $wallet->enabled_at,
-                    'balance' => 0, //TODO:: get balance from transaction
+                    'balance' => $wallet->getLatestAmount(),
                 ]
             ]
         ];
@@ -157,7 +158,7 @@ class MiniwalletController extends Controller
                         'owned_by' => $wallet->owned_by,
                         'status' => $wallet->status,
                         'enabled_at' => $wallet->enabled_at,
-                        'balance' => 0, //TODO:: get balance from transaction
+                        'balance' => $wallet->getLatestAmount(),
                     ]
                 ]
             ];
@@ -165,6 +166,77 @@ class MiniwalletController extends Controller
             $response = [
                 'status' => 'fail',
                 'message' => 'Failed to disable wallet'
+            ];
+        }
+        return response()->json($response);
+    }
+
+    public function deposits(Request $request)
+    {
+        $validator =  Validator::make($request->all(), [
+            'reference_id' => 'required|uuid|unique:transactions',
+            'amount' => 'required|numeric',
+        ], [
+            'reference_id.required' => 'The refrence ID is required',
+            'reference_id.uuid' => 'The refrence ID must be a valid UUID',
+            'reference_id.unique' => 'The refrence ID has been used',
+            'amount.required' => 'The amount is required',
+            'amount.numeric' => 'The amount must be a numeric value',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'message' => $validator->errors(),
+                'status' => 'fail'
+            ];
+            return response()->json($response);
+        }
+
+        $account = $request->get('account');
+        $wallet = Wallet::where('owned_by', $account->customer_xid)
+                    ->where('status', Wallet::STATUS_ENABLED)->first();
+
+        if (!$wallet) {
+            $response = [
+                'message' => 'Wallet not enabled',
+                'status' => 'fail'
+            ];
+            return response()->json($response);
+        }
+
+        //get latest transaction
+        $latest_transaction = Transaction::where('wallet_id', $wallet->id)
+                            ->orderBy('created_at', 'desc')->first();
+        $latest_ammount = $latest_transaction->amount_to ?? 0;
+
+        $transaction = new Transaction;
+        $transaction->id = Str::uuid();
+        $transaction->reference_id = $request->input('reference_id');
+        $transaction->amount_from = $latest_ammount;
+        $transaction->amount_to = $latest_ammount + $request->input('amount');
+        $transaction->type = Transaction::TRANSACTION_TYPE_DEPOSITS;
+        $transaction->status = Transaction::TRANSACTION_STATUS_COMPLETED;
+        $transaction->wallet_id = $wallet->id;
+        $transaction->owned_by = $account->customer_xid;
+
+        if ($transaction->save()) {
+            $response = [
+                'status' => 'success',
+                'data' => [
+                    'deposit' => [
+                        'id' => $transaction->id,
+                        'deposited_by' => $transaction->owned_by,
+                        'status' => Transaction::TRANSACTION_STATUS_LABEL[$transaction->status],
+                        'amount' => $transaction->amount_to,
+                        'deposited_at' => $transaction->created_at,
+                        'reference_id' => $transaction->reference_id,
+                    ]
+                ]
+            ];
+        } else {
+            $response = [
+                'status' => 'fail',
+                'message' => 'Failed to create transaction'
             ];
         }
         return response()->json($response);

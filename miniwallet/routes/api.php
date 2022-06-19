@@ -38,6 +38,7 @@ Route::prefix('v1')->group(function () {
             Route::post('/wallet', 'enableWallet');
             Route::get('/wallet', 'getWallet');
             Route::patch('/wallet', 'disableWallet');
+            Route::post('/wallet/deposits', 'deposits');
         });
     });
 });
