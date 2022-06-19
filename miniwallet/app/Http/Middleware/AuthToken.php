@@ -35,7 +35,8 @@ class AuthToken
                 'status' => 'fail',
             ], 401);
         }
-
+        // expose account to controller, so no need to query it again
+        $request->merge(['account' => $account]);
         return $next($request);
     }
 }
