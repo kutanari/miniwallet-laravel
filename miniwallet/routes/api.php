@@ -32,4 +32,10 @@ Route::prefix('v1')->group(function () {
     Route::controller(MiniwalletController::class)->group(function () {
         Route::post('/init', 'init');
     });
+
+    Route::middleware('auth.token')->group(function () {
+        Route::controller(MiniwalletController::class)->group(function () {
+            Route::post('/wallet', 'enableWallet');
+        });
+    });
 });
