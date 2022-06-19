@@ -75,4 +75,42 @@ class MiniwalletController extends Controller
             return response()->json($response);
         }
     }
+
+    public function enableWallet(Request $request)
+    {
+        $account = $request->get('account');
+        $wallet = Wallet::where('owned_by', $account->customer_xid)->first();
+
+        if ($wallet->status === Wallet::STATUS_ENABLED) {
+            $response = [
+                'message' => 'Wallet already enabled',
+                'status' => 'fail'
+            ];
+            return response()->json($response);
+        }
+
+        $wallet->status = Wallet::STATUS_ENABLED;
+        $wallet->enabled_at = now();
+
+        if ($wallet->save()) {
+            $response = [
+                'status' => 'success',
+                'data' => [
+                    'wallet' => [
+                        'id' => $wallet->id,
+                        'owned_by' => $wallet->owned_by,
+                        'status' => $wallet->status,
+                        'enabled_at' => $wallet->enabled_at,
+                        'balance' => 0, //TODO:: get balance from transaction
+                    ]
+                ]
+            ];
+        } else {
+            $response = [
+                'status' => 'fail',
+                'message' => 'Failed to enable wallet'
+            ];
+        }
+        return response()->json($response);
+    }
 }
