@@ -204,17 +204,89 @@ class MiniwalletController extends Controller
             return response()->json($response);
         }
 
-        //get latest transaction
-        $latest_transaction = Transaction::where('wallet_id', $wallet->id)
-                            ->orderBy('created_at', 'desc')->first();
-        $latest_ammount = $latest_transaction->amount_to ?? 0;
+        $latest_amount = $wallet->getLatestAmount();
 
         $transaction = new Transaction;
         $transaction->id = Str::uuid();
         $transaction->reference_id = $request->input('reference_id');
-        $transaction->amount_from = $latest_ammount;
-        $transaction->amount_to = $latest_ammount + $request->input('amount');
+        $transaction->amount_from = $latest_amount;
+        $transaction->amount_to = $latest_amount + $request->input('amount');
         $transaction->type = Transaction::TRANSACTION_TYPE_DEPOSITS;
+        $transaction->status = Transaction::TRANSACTION_STATUS_COMPLETED;
+        $transaction->wallet_id = $wallet->id;
+        $transaction->owned_by = $account->customer_xid;
+
+        if ($transaction->save()) {
+            $response = [
+                'status' => 'success',
+                'data' => [
+                    'deposit' => [
+                        'id' => $transaction->id,
+                        'deposited_by' => $transaction->owned_by,
+                        'status' => Transaction::TRANSACTION_STATUS_LABEL[$transaction->status],
+                        'amount' => $transaction->amount_to,
+                        'deposited_at' => $transaction->created_at,
+                        'reference_id' => $transaction->reference_id,
+                    ]
+                ]
+            ];
+        } else {
+            $response = [
+                'status' => 'fail',
+                'message' => 'Failed to create transaction'
+            ];
+        }
+        return response()->json($response);
+    }
+
+    public function withdrawals(Request $request)
+    {
+        $validator =  Validator::make($request->all(), [
+            'reference_id' => 'required|uuid|unique:transactions',
+            'amount' => 'required|numeric',
+        ], [
+            'reference_id.required' => 'The refrence ID is required',
+            'reference_id.uuid' => 'The refrence ID must be a valid UUID',
+            'reference_id.unique' => 'The refrence ID has been used',
+            'amount.required' => 'The amount is required',
+            'amount.numeric' => 'The amount must be a numeric value',
+        ]);
+
+        if ($validator->fails()) {
+            $response = [
+                'message' => $validator->errors(),
+                'status' => 'fail'
+            ];
+            return response()->json($response);
+        }
+
+        $account = $request->get('account');
+        $wallet = Wallet::where('owned_by', $account->customer_xid)
+                    ->where('status', Wallet::STATUS_ENABLED)->first();
+
+        if (!$wallet) {
+            $response = [
+                'message' => 'Wallet not enabled',
+                'status' => 'fail'
+            ];
+            return response()->json($response);
+        }
+
+        $latest_amount = $wallet->getLatestAmount();
+        if ($latest_amount < $request->input('amount')) {
+            $response = [
+                'message' => 'Insufficient funds',
+                'status' => 'fail'
+            ];
+            return response()->json($response);
+        }
+
+        $transaction = new Transaction;
+        $transaction->id = Str::uuid();
+        $transaction->reference_id = $request->input('reference_id');
+        $transaction->amount_from = $latest_amount;
+        $transaction->amount_to = $latest_amount - $request->input('amount');
+        $transaction->type = Transaction::TRANSACTION_TYPE_WITHDRAWALS;
         $transaction->status = Transaction::TRANSACTION_STATUS_COMPLETED;
         $transaction->wallet_id = $wallet->id;
         $transaction->owned_by = $account->customer_xid;
