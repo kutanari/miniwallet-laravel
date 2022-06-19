@@ -37,6 +37,7 @@ Route::prefix('v1')->group(function () {
         Route::controller(MiniwalletController::class)->group(function () {
             Route::post('/wallet', 'enableWallet');
             Route::get('/wallet', 'getWallet');
+            Route::patch('/wallet', 'disableWallet');
         });
     });
 });
